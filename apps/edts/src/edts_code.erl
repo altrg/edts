@@ -581,9 +581,29 @@ get_compile_outdir(File, Opts) ->
 filename_to_outdir(File) ->
   DirName = filename:dirname(File),
   EbinDir = filename:join([DirName, "..", "ebin"]),
-  case filelib:is_dir(EbinDir) of
-    true  -> EbinDir;
-    false -> DirName
+  RebarDir = guess_rebar_beam_dir(DirName),
+  choose_outdir([RebarDir, EbinDir, DirName]).
+
+guess_rebar_beam_dir(DirName) ->
+  case lists:reverse(filename:split(DirName)) of
+    ["src", App, "apps"| AppRoot] ->
+      rebar_beam_dir(App, AppRoot);
+    ["src", App, "lib"| AppRoot] ->
+      rebar_beam_dir(App, AppRoot);
+    ["src", App| Root] ->
+      rebar_beam_dir(App, [App| Root]);
+    _ ->
+      undefined
+  end.
+
+rebar_beam_dir(App, AppRoot) ->
+  Parts = ["ebin", App, "lib", "default", "_build"| AppRoot],
+  filename:join(lists:reverse(Parts)).
+
+choose_outdir([DirName| Dirs]) ->
+  case is_list(DirName) andalso filelib:is_dir(DirName) of
+    true  -> DirName;
+    false -> choose_outdir(Dirs)
   end.
 
 
